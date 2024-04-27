@@ -1,0 +1,477 @@
+---
+title: "Shipping Analysis"
+author: "zrseah"
+date: "2024-04-27"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+The rise of e-commerce platforms and the evolution of global trade logistics have propelled online shopping into mainstream adoption, giving customers the ease of swiftly purchasing products with just a few clicks. This dataset comprises 10,999 observations across 12 variables, and the forthcoming analysis will delve into the dynamics of international shipping.
+
+# Key Findings: 
+- The customer base is fairly evenly distributed between males (49.6%) and females (50.4%).
+- Warehouse Block F stands out as the busiest among the five warehouses, with the highest number of orders shipped out, totaling 3666.
+- The ship is the predominant mode of shipment across all warehouses and overall.
+- All orders necessitate at least two customer care calls, with the highest recorded at seven for a single order.
+- Warehouse Block F also registers the highest total number of customer care calls.
+- Shipments made by ships generate the highest total number of customer care calls.
+- The proportions of product valuations, categorized by cost, are notably similar across various shipment modes, indicating no clear preference based on product price.
+- Warehouse Block D boasts the highest average customer rating of 3.02.
+- The overall mean customer rating stands at 3.00, with a median of 2.99.
+- Shipments by road receive the highest average customer ratings, averaging at 3.00.
+- Similar to product valuation, the proportions of products distinguished by importance exhibit little variance across different shipment modes, suggesting no discernible preference based on product importance.
+- Discounts offered range from a minimum of 1% to a maximum of 65%.
+- The majority of customers received discounts between 1% and 10% on their purchases.
+- No correlation is observed between the discount amount and customer ratings. The highest average customer rating is 3.06 for products with a discount range of 11% to 20%, while the lowest average customer rating is 2.85 for products with a discount range of 61% to 70%.
+- The average weight of products is 3634g, with a median of 4149g.
+- No discernible preference for a particular mode of shipment is evident based on the weight of products.
+- All warehouses experience a higher proportion of late shipments compared to on-time shipments.
+- Warehouse Block B has the highest proportion of late shipments, at 60.2%.
+- Shipments by flight also exhibit the largest proportion of late shipments, at 60.2%.
+- Interestingly, the average customer rating for late shipments (3.01) surpasses that for on-time shipments (2.97), suggesting that customer ratings are not significantly influenced by the punctuality of shipped products.
+- Products deemed of high importance experience a greater proportion of late shipments (65%) compared to on-time shipments (35%).
+
+# Analysis
+
+## Load data and import libraries 
+```{r, warning=FALSE}
+#load data 
+shippingdf <- read.csv("~/Case Studies/Shipping Case Study/Shipping_Analysis/shipping.csv")
+
+#import library
+library('stringr')
+library('dplyr')
+library('ggplot2')
+library('magrittr')
+library('patchwork')
+library('gridExtra')
+```
+
+## Check data structure
+```{r}
+str(shippingdf)
+```
+
+## Data cleaning 
+
+### Change all column names to lower case
+```{r}
+colnames(shippingdf) <- tolower(colnames(shippingdf))
+```
+
+### Rename column names
+```{r}
+colnames(shippingdf)[colnames(shippingdf) == "reached.on.time_y.n"] <- "punctuality"
+```
+
+### Remove trailing spaces
+```{r}
+shippingdf <- shippingdf %>%
+  mutate_at(vars(warehouse_block, mode_of_shipment, product_importance, gender), trimws)
+```
+
+### Check for duplicates
+```{r}
+sum(duplicated(shippingdf))
+```
+
+### Check for NAs
+```{r}
+sum(is.na(shippingdf))
+```
+
+### Capitalise the first letter of all entries in product importance 
+```{r}
+shippingdf$product_importance <- str_to_title(shippingdf$product_importance)
+```
+
+## Gender disrtribution 
+```{r}
+tibble(
+  F = c(
+    round(sum(shippingdf$gender == "F"),0),
+    sum(shippingdf$gender == "F") / (sum(shippingdf$gender == "M") + sum(shippingdf$gender == "F")) * 100
+  ),
+  M = c(
+    round(sum(shippingdf$gender == "M"),0),
+    sum(shippingdf$gender == "M") / (sum(shippingdf$gender == "M") + sum(shippingdf$gender == "F")) * 100
+  )
+)
+```
+
+## Mode of shipment and warehouse blocks 
+
+### Breakdown of orders by mode of shipment
+```{r}
+tibble(
+  Flight = sum(shippingdf$mode_of_shipment == "Flight"),
+  Road = sum(shippingdf$mode_of_shipment == "Road"),
+  Ship = sum(shippingdf$mode_of_shipment == "Ship") 
+)
+```
+
+### Breakdown of orders by warehouse blocks
+```{r}
+tibble(
+  A = sum(shippingdf$warehouse_block == "A"),
+  B = sum(shippingdf$warehouse_block == "B"),
+  C = sum(shippingdf$warehouse_block == "C"),
+  D = sum(shippingdf$warehouse_block == "D"),
+  F = sum(shippingdf$warehouse_block == "F")
+)
+```
+
+### Distribution of orders by modes of shipment for each warehouse block
+```{r, warning=FALSE}
+shipmentcolour <- c("pink1", "slategray1", "lightcyan1")
+ggplot(shippingdf, aes(x = warehouse_block, fill = mode_of_shipment)) + 
+  geom_bar(colour = "white", size = 0.5) +
+  scale_fill_manual(values = shipmentcolour) +
+  labs(x = "Warehouse Block", y = "Count", fill = "Shipment Mode") +
+  theme(plot.background = element_rect(fill = "grey10"),
+        panel.background = element_rect(fill = "grey1"),
+        legend.background = element_rect(fill = "grey10"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12))
+```
+
+## Customer rating 
+
+### Breakdown of orders for each customer rating score  
+```{r}
+tibble(
+  '1' = sum(shippingdf$customer_rating == "1"),
+  '2' = sum(shippingdf$customer_rating == "2"),
+  '3' = sum(shippingdf$customer_rating == "3"),
+  '4' = sum(shippingdf$customer_rating == "4"),
+  '5' = sum(shippingdf$customer_rating == "5"),
+)
+```
+
+### Summary of customer ratings
+```{r}
+summary(shippingdf$customer_rating)
+```
+
+### Average customer ratings for each warehouse block and mode of shipment
+```{r, warning=FALSE, fig.width=12, fig.height=7}
+ratingswh <- aggregate(customer_rating ~ warehouse_block, shippingdf, function(x) round(mean(x), 2))
+warehousecolours <- c("cadetblue2", "honeydew3", "lightsteelblue1", "mistyrose1", "thistle2")
+p2 <- ggplot(ratingswh, aes(x = warehouse_block, y = sprintf("%.2f", customer_rating))) +
+  geom_point(colour = warehousecolours, size = 4) +
+  scale_colour_manual(values = warehousecolours) +
+  labs(x = "Warehouse Block", y = "Average Customer Rating") +
+  theme(plot.background = element_rect(fill = "gray10"),
+        panel.background = element_rect(fill = "grey1"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12))
+
+ratingsshipment <- aggregate(customer_rating ~ mode_of_shipment, shippingdf, function(x) round(mean(x), 2))
+p3 <-ggplot(ratingsshipment, aes(x = mode_of_shipment, y = sprintf("%.2f", customer_rating))) + 
+  geom_point(colour = shipmentcolour, size = 4) +
+  scale_colour_manual(values = shipmentcolour) +
+  labs(x = "Mode of Shipment", y = "Average Customer Rating") +
+  theme(plot.background = element_rect(fill = "gray10"),
+        panel.background = element_rect(fill = "grey1"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12)) 
+
+combined1 <- p2 + p3 + plot_layout(ncol = 2, widths = c(8,8))
+combined1
+```
+
+## Product punctuality and importance
+
+### Average customer ratings based on punctuality of shipment 
+```{r}
+aggregate(customer_rating ~ punctuality, shippingdf, function(x) round(mean(x),2))
+```
+
+### Breakdown of orders by punctuality 
+```{r}
+tibble(
+  On_time = sum(shippingdf$punctuality == "0"),
+  Late = sum(shippingdf$punctuality == "1")
+)
+```
+
+### Breakdown of orders by product importance
+```{r}
+tibble(
+  Low = sum(shippingdf$product_importance == "Low"), 
+  Medium = sum(shippingdf$product_importance == "Medium"),
+  High = sum(shippingdf$product_importance == "High"),
+)
+```
+
+### Punctuality of shipment of each warehouse block
+```{r}
+shippingdf %>%  
+  group_by(warehouse_block, punctuality) %>%  
+  summarise(count = n()) %>%  
+  ungroup %>%  
+  group_by(warehouse_block) %>% 
+  mutate(percentage = round((count/sum(count))* 100, 2))
+```
+
+### Distribution of orders based on punctuality and product importance for each warehouse 
+```{r, warning=FALSE, fig.width=12, fig.height=7}
+punctualitycolour <- c("honeydew1", "indianred")
+p4 <- ggplot(shippingdf, aes(x = warehouse_block, fill = as.character(punctuality))) +
+  geom_bar(colour = "white", size = 0.5) +
+  scale_fill_manual(values = punctualitycolour, labels = c("On Time", "Late")) +
+  labs(x = "Warehouse Block", y = "Count", fill = "Punctuality") +
+  theme(plot.background = element_rect(fill = "grey10"),
+        panel.background = element_rect(fill = "grey1"),
+        legend.background = element_rect(fill = "grey10"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12))
+
+importancecolour <- c("lemonchiffon1","rosybrown1","indianred1")
+p5 <- ggplot(shippingdf, aes(x = warehouse_block, fill = product_importance)) + 
+  scale_fill_manual(values = importancecolour) +
+  geom_bar(colour = "white", size = 0.5) +
+  labs(x = "Warehouse Block", y = "Count", fill = "Product Importance")+
+  theme(plot.background = element_rect(fill = "grey10"),
+        panel.background = element_rect(fill = "grey1"),
+        legend.background = element_rect(fill = "grey10"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12))
+
+combined2 <- p4 + p5 + plot_layout(ncol = 2, widths = c(5,5))
+combined2
+```
+
+### Punctuality of each mode of shipment
+```{r}
+shippingdf %>% 
+  group_by(mode_of_shipment, punctuality) %>%  
+  summarise(count = n()) %>%  
+  ungroup() %>% 
+  group_by(mode_of_shipment) %>% 
+  mutate(percentage = round(count/sum(count)*100,2))
+```
+
+### Breakdown of orders by product importance for each mode of shipment
+```{r}
+productorder <- c("Low", "Medium", "High")
+shippingdf$product_importance <- factor(shippingdf$product_importance, levels = productorder)
+shippingdf %>%  
+  group_by(mode_of_shipment, product_importance) %>% 
+  summarise(count = n()) %>%  
+  ungroup() %>%  
+  group_by(mode_of_shipment) %>% 
+  mutate(percentage = round((count / sum(count)) * 100, 2))
+```
+
+### Distribution of orders based on punctuality and product importance for each mode of shipment
+```{r, warning=FALSE, fig.width=12, fig.height=7}
+p6 <- ggplot(shippingdf, aes(x = mode_of_shipment, fill = as.character(punctuality))) +
+  geom_bar(colour = "white", size = 0.5) +
+  scale_fill_manual(values = punctualitycolour, labels = c("On Time", "Late")) +
+  labs(x = "Mode of Shipment", y = "Count", fill = "Punctuality") +
+  theme(plot.background = element_rect(fill = "grey10"),
+        panel.background = element_rect(fill = "grey1"),
+        legend.background = element_rect(fill = "grey10"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12))
+
+p7 <- ggplot(shippingdf, aes(x = mode_of_shipment, fill = product_importance)) +
+  scale_fill_manual(values = importancecolour) +
+  geom_bar(colour = "white", size = 0.5) +
+  labs(x = "Mode of Shipment", y = "Count", fill = "Product Importance") +
+  theme(plot.background = element_rect(fill = "grey10"),
+        panel.background = element_rect(fill = "grey1"),
+        legend.background = element_rect(fill = "grey10"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12))
+
+combined3 <- p6 + p7 + plot_layout(ncol = 2)
+
+combined3
+```
+
+### Breakdown of orders by product importance and punctuality
+```{r}
+shippingdf %>%  
+  group_by(product_importance, punctuality) %>%  
+  summarise(count = n()) %>% 
+  ungroup() %>% 
+  group_by(product_importance) %>% 
+  mutate(percent = round(count/sum(count)*100, 2))
+```
+
+### Distribution of orders by product importance and punctuality
+```{r, warning=FALSE}
+ggplot(shippingdf, aes(x = product_importance, fill = as.character(punctuality))) +
+  geom_bar(colour = "white", size = 0.5) +
+  scale_fill_manual(values = punctualitycolour, labels = c("On Time", "Late")) +
+  labs(x  = "Product Importance", y = "Count", fill = "Punctuality") +
+  theme(plot.background = element_rect(fill = "grey10"),
+        panel.background = element_rect(fill = "grey1"),
+        legend.background = element_rect(fill = "grey10"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12))
+```
+
+## Customer Calls
+
+### Summary of customer care calls
+```{r}
+summary(shippingdf$customer_care_calls)
+```
+
+### Count of customer care calls for each warehouse block
+```{r, warning=FALSE}
+totalcalls <- aggregate(customer_care_calls ~ warehouse_block, data = shippingdf, FUN = sum)
+ggplot(totalcalls, aes(x = warehouse_block, y = customer_care_calls, fill = warehousecolours)) + 
+  geom_bar(stat = "identity", colour = "white", size = 0.5) +
+  scale_fill_manual(values = warehousecolours) +
+  labs(x = "Warehouse Block", y = "Count of Customer Care Calls") +
+  theme(plot.background = element_rect(fill = "grey10"),
+        panel.background = element_rect(fill = "grey1"),
+        legend.background = element_rect(fill = "grey10"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12)) + 
+  guides(fill = FALSE)
+```
+
+### Count of customer care calls for each warehouse block
+```{r, warning=FALSE}
+totalcallsshipment <- aggregate(customer_care_calls ~ mode_of_shipment, data = shippingdf, FUN =sum)
+ggplot(totalcallsshipment, aes(x = mode_of_shipment, y = customer_care_calls, fill = shipmentcolour)) + 
+  geom_bar(stat = "identity", colour = "white", size = 0.5) +
+  scale_fill_manual(values = shipmentcolour) +
+  labs(x = "Warehouse Block", y = "Count of Customer Care Calls") +
+  theme(plot.background = element_rect(fill = "grey10"),
+        panel.background = element_rect(fill = "grey1"),
+        legend.background = element_rect(fill = "grey10"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12)) + 
+  guides(fill = FALSE)
+```
+
+## Product costs 
+
+### Summary of cost of products
+```{r}
+summary(shippingdf$cost_of_the_product)
+```
+
+### Count of orders by product price range for each mode of shipment
+```{r, warning=FALSE}
+breaks <- c(0, 99, 199, 299, Inf)
+labels <- c("$99 & Below", "$100 - $199", "$200 - $299", "$300 & Above")
+shippingdf$cost_of_the_product_range <- cut(shippingdf$cost_of_the_product, breaks = breaks, labels = labels, include.lowest = TRUE)
+pricerangecolour <- c("lightcyan1", "lavender", "lightpink1", "lemonchiffon1")
+ggplot(shippingdf, aes(x = mode_of_shipment, fill = cost_of_the_product_range)) +
+  geom_bar(colour = "white", size = 0.5) +
+  scale_fill_manual(values = pricerangecolour) +
+  labs(x = "Mode of Shipment", y = "Count", fill = "Product Price Range") +
+  theme(plot.background = element_rect(fill = "grey10"),
+        panel.background = element_rect(fill = "grey1"),
+        legend.background = element_rect(fill = "grey10"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12))
+```
+
+# Discount offered
+
+### Summary of discount offered
+```{r}
+summary(shippingdf$discount_offered)
+```
+
+### Distribution of orders by discount range
+```{r, warning=FALSE}
+breaks2 <- c(0, 5, 10, 20, 30, 40, 50, 60 , 70)
+discountlabels <- c("5% & Below", "6% to 10%", "11% to 20%", "21% to 30%", 
+                    "31% to 40%", "41% to 50%", "51% to 60%", "61% to 70%")
+shippingdf$discount_offered_range <- cut(shippingdf$discount_offered, breaks = breaks2, labels = discountlabels, include.lowest  = TRUE)
+discountcolours <- c("cornsilk", "azure3", "slategray4","mistyrose2", "paleturquoise2", "lavenderblush", "thistle2", "grey")
+ggplot(shippingdf, aes(x = discount_offered_range)) + 
+  geom_bar(colour = "white", size = 0.5, fill = discountcolours) +
+  scale_fill_manual(values = discountcolours) +
+  labs(x  = "Discount", y = "Count") +
+  theme(plot.background = element_rect(fill = "grey10"),
+        panel.background = element_rect(fill = "grey1"),
+        legend.background = element_rect(fill = "grey10"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Average customer ratings across different discount range
+```{r, warning=FALSE}
+discountrating <- aggregate(customer_rating ~ discount_offered_range, shippingdf, function(x) round(mean(x),2))
+ggplot(discountrating, aes(x = discount_offered_range, y = customer_rating)) + 
+  geom_point(colour = discountcolours, size = 4) +
+  scale_colour_manual(values = discountcolours) + 
+  labs(x = "Discount", y = "Average Customer Rating") +
+  theme(plot.background = element_rect(fill = "grey10"),
+        panel.background = element_rect(fill = "grey1"),
+        legend.background = element_rect(fill = "grey10"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Weight 
+
+### Summary of weight of products
+```{r}
+summary(shippingdf$weight_in_gms)
+```
+
+### Distribution of product weights by mode of shipment
+```{r, warning=FALSE}
+breaks3 <- c(0, 999, 1999, 2999, 3999, 4999, 5999, 6999, Inf)
+weightlabels <- c("999g & Below", "1000g to 1999g", "2000g to 2999g", "3000g to 3999g", "4000g to 4999g", 
+                  "5000g to 5999g", "6000g to 6999g", "7000g & Above")
+shippingdf$weight_range <- cut(shippingdf$weight_in_gms, breaks = breaks3, labels = weightlabels, include.lowest = TRUE)
+ggplot(shippingdf, aes(x = weight_range, fill = mode_of_shipment)) +
+  geom_bar(colour = "white", size = 0.5) + 
+  scale_fill_manual(values = shipmentcolour) +
+  labs(x = "Weight Range", fill = "Mode of Shipment") +
+  theme(plot.background = element_rect(fill = "grey10"),
+        panel.background = element_rect(fill = "grey1"),
+        legend.background = element_rect(fill = "grey10"),
+        text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text = element_text(family = "Arial", color = "white", size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Prior purchases 
+
+### Summary of customer's prior purchases
+```{r}
+summary(shippingdf$prior_purchases)
+```
+
+# Evaluation 
+
+It seems that there is no clear preference for a specific mode of shipment based on product weight, importance, or price. Therefore, factors such as shipment costs, available modes of shipment during checkout, and the convenience of the shipment method may influence the preference for a particular mode of shipment. Further research is warranted to gain deeper insights into this matter.
+
+Moreover, a comprehensive investigation into logistics management across all warehouses is imperative due to the prevalence of late shipments outnumbering on-time deliveries. This concern is particularly pronounced for Warehouse B, which exhibits the highest proportion of late shipments despite having one of the lowest total order volumes. Additionally, although shipping by ship is the primary mode of transportation for the highest volume of orders, shipments by flight experience a higher proportion of late deliveries compared to on-time deliveries. Further investigation is required to identify the underlying factors contributing to these discrepancies.
+
+Furthermore, additional research is needed to ascertain the factors influencing customer ratings.
+
+# Conclusion
+
+As the trend towards online shopping continues to grow, there is a pressing need for shipment and logistics companies to enhance their operational efficiencies in order to manage the rising volume of orders effectively. Given the lucrative nature of the shipment and logistics industry and the substantial benefits it offers, investing in improvements to efficiency is highly advantageous.
+
+
+
+
+
+
+
+
+
+
+
